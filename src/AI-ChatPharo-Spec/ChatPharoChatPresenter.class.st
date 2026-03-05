@@ -218,7 +218,7 @@ thinkingPresenter phase: #finished.
 ChatPharoChatPresenter >> initializePresenters [
 
 	messageTextField := self newTextInput
-		                    placeholder: 'Type your message here...';
+		                    placeholder: 'Ask a question or type /help ';
 		                    yourself.
 
 	submitButton := self newButton
