@@ -242,7 +242,6 @@ ChatPharoChat >> generateTitleFrom: userText [
 		[
 			result := titleAgent getResponseForPrompt: prompt.
 			cleanTitle := result asString trimBoth.
-			cleanTitle := cleanTitle copyReplaceAll: '"' with: ''.
 			cleanTitle := cleanTitle copyReplaceAll: '''' with: ''.
 			cleanTitle := cleanTitle copyReplaceAll: String cr with: ' '.
 			cleanTitle := cleanTitle copyReplaceAll: String lf with: ' '.
