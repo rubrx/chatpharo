@@ -42,7 +42,8 @@ Class {
 		'timeBudgetInput',
 		'requestTimeoutInput',
 		'messageLimitInput',
-		'dynamicChatNamingCheckBox'
+		'dynamicChatNamingCheckBox',
+		'metadataEnabledCheckBox'
 	],
 	#category : 'AI-ChatPharo-Spec-Core',
 	#package : 'AI-ChatPharo-Spec',
@@ -94,18 +95,18 @@ ChatPharoSettingsPresenter >> connectPresenters [
 					self ].
 			userAccepted ifTrue: [
 					model useApi: apiClass.
-					chatPharo ifNotNil: [ chatPharo synchronizeChatsWithSettingsAgent ].
+					self commitSettingsAndSynchronizeChats.
 					apiSettingsContainer removeAll.
 					newPresenter := apiClass settingsPresenterFor: model agent.
-					newPresenter ifNotNil: [ apiSettingsContainer add: newPresenter ].
+					self configureApiSettingsPresenter: newPresenter.
+					self commitSettingsAndSynchronizeChats.
 					systemPromptInput text: model agent systemPrompt ] ].
 	systemPromptInput whenTextChangedDo: [ :text |
 			text ~= ChatPharoAgent defaultSystemPrompt ifTrue: [
 					(ChatPharoSafetyAdvisor confirmPromptModificationOn: self)
 						ifTrue: [
 								model agent systemPrompt: text.
-								ChatPharoSettings setDefault: model.
-								ChatPharoSettings saveDefault ]
+								self commitSettingsAndSynchronizeChats ]
 						ifFalse: [ systemPromptInput text: model agent systemPrompt ] ] ].
 
 	maxIterationsInput whenTextChangedDo: [ :t |
@@ -166,6 +167,11 @@ ChatPharoSettingsPresenter >> connectPresenters [
 		                             value: [ ChatPharoSettings default dynamicChatNamingEnabled ]
 		                             changeAction: [ :val | ChatPharoSettings default dynamicChatNamingEnabled: val ].
 
+	metadataEnabledCheckBox := self
+		                           addCheckboxLabeled: 'Send environment metadata to the model'
+		                           value: [ ChatPharoSettings default metadataEnabled ]
+		                           changeAction: [ :val | ChatPharoSettings default metadataEnabled: val ].
+
 	ethicsDirectorCheckBox whenChangedDo: [ :enabled | model ethicsDirectorEnabled: enabled ].
 
 	ethicsMandateInput whenTextChangedDo: [ :text | model ethicsMandate: text trimBoth ].
@@ -217,6 +223,24 @@ ChatPharoSettingsPresenter >> connectPresenters [
 						(ChatPharoSafetyAdvisor confirmToolDisableOn: self)
 							ifTrue: [ model disableBrowserTool: 'open_playground' ]
 							ifFalse: [ playgroundToolCheckBox state: true ] ] ]
+]
+
+{ #category : 'initialization' }
+ChatPharoSettingsPresenter >> commitSettingsAndSynchronizeChats [
+
+	ChatPharoSettings setDefault: model.
+	ChatPharoSettings saveDefault.
+	chatPharo ifNotNil: [ chatPharo synchronizeChatsWithSettingsAgent ]
+]
+
+{ #category : 'initialization' }
+ChatPharoSettingsPresenter >> configureApiSettingsPresenter: aPresenter [
+
+	aPresenter ifNil: [ ^ self ].
+	(aPresenter respondsTo: #whenSettingsChangedDo:) ifTrue: [
+		aPresenter whenSettingsChangedDo: [
+			self commitSettingsAndSynchronizeChats ] ].
+	apiSettingsContainer add: aPresenter
 ]
 
 { #category : 'layout' }
@@ -525,6 +549,7 @@ ChatPharoSettingsPresenter >> newChatTab [
 		             add: feedbackCheckBox expand: false;
 		             add: welcomeMessageCheckBox expand: false;
 						 add: dynamicChatNamingCheckBox expand: false;
+						 add: metadataEnabledCheckBox expand: false;
 		             yourself.
 
 	^ SpPresenter new
@@ -820,7 +845,7 @@ ChatPharoSettingsPresenter >> refreshApiSettings [
 	| newPresenter |
 	apiSettingsContainer removeAll.
 	newPresenter := model agent class settingsPresenterFor: model agent.
-	newPresenter ifNotNil: [ apiSettingsContainer add: newPresenter ].
+	self configureApiSettingsPresenter: newPresenter.
 	apiSettingsContainer changed 
 ]
 
@@ -850,8 +875,7 @@ ChatPharoSettingsPresenter >> removeIcebergExtensionTab [
 { #category : 'initialization' }
 ChatPharoSettingsPresenter >> saveSettings [
 
-	ChatPharoSettings setDefault: model.
-	ChatPharoSettings saveDefault.
+	self commitSettingsAndSynchronizeChats.
 	self inform: 'Settings saved.'
 ]
 
